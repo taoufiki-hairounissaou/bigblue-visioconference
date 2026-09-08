@@ -26,6 +26,15 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
 
+  nginx:
+    image: nginx:alpine
+    container_name: bigblue_nginx
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+
 volumes:
   postgres_data:
   minio_data:
