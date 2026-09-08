@@ -163,7 +163,66 @@ Cette base servira de fondation pour la Phase 1 (développement du backend Expre
 ---
 
 ## 5. Développement — Backend
-*(API Express, structure des routes, authentification — à venir)*
+
+### 5.1 Initialisation du projet
+Le backend est un projet Node.js séparé, dans le dossier `backend/` du dépôt :
+```bash
+mkdir -p backend/src
+cd backend
+npm init -y
+```
+
+### 5.2 Dépendances installées
+```bash
+npm install express socket.io peer cors dotenv
+```
+| Package | Rôle |
+|---|---|
+| `express` | Framework serveur HTTP / API REST |
+| `socket.io` | Communication temps réel (chat, statuts, signaling) |
+| `peer` | Serveur PeerJS pour la négociation WebRTC |
+| `cors` | Autoriser les appels depuis le frontend (autre origine) |
+| `dotenv` | Chargement des variables d'environnement depuis `.env` |
+
+Un `.gitignore` propre au backend est créé pour exclure `node_modules/` (dépendances générées, ne doit jamais être versionné) et `.env` (secrets du backend, distincts de ceux d'`infra/`).
+
+### 5.3 Serveur Express minimal (test de vie)
+Un premier serveur minimal est mis en place avec une route `/api/health`, destinée à vérifier que le serveur répond correctement avant d'ajouter la logique métier :
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const http = require('http');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'BigBlue backend opérationnel' });
+});
+
+const PORT = process.env.PORT || 4000;
+const server = http.createServer(app);
+
+server.listen(PORT, () => {
+  console.log(`Serveur BigBlue démarré sur le port ${PORT}`);
+});
+```
+
+### 5.4 Vérification
+Test effectué depuis un navigateur sur la machine hôte, à l'adresse `http://192.168.1.185:4000/api/health` :
+```json
+{
+  "status": "ok",
+  "message": "BigBlue backend opérationnel"
+}
+```
+
+Le serveur Express de base est fonctionnel. Cette route `/api/health` servira aussi de test de disponibilité (health check) pour la supervision du service une fois en production.
+
+*(Capture d'écran : `docs/screenshots/10-backend-express-health-check.png`)*
 
 ---
 
