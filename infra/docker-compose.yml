@@ -35,6 +35,21 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
 
+  coturn:
+    image: coturn/coturn
+    container_name: bigblue_coturn
+    restart: unless-stopped
+    network_mode: host
+    command: >
+      -n
+      --log-file=stdout
+      --external-ip=192.168.1.185
+      --realm=bigblue.local
+      --user=${TURN_USER}:${TURN_PASSWORD}
+      --lt-cred-mech
+      --min-port=49152
+      --max-port=49252
+
 volumes:
   postgres_data:
   minio_data:
