@@ -212,7 +212,7 @@ server.listen(PORT, () => {
 ```
 
 ### 5.4 Vérification
-Test effectué depuis un navigateur sur la machine hôte, à l'adresse `http://192.168.1.185:4000/api/health` :
+Test effectué depuis un navigateur, à l'adresse `http://<IP_VM>:4000/api/health` :
 ```json
 {
   "status": "ok",
@@ -224,6 +224,55 @@ Le serveur Express de base est fonctionnel. Cette route `/api/health` servira au
 
 *(Capture d'écran : `docs/screenshots/10-backend-express-health-check.png`)*
 
+## 5.5 Restructuration du backend (architecture propre)
+
+Le code initial (tout dans un seul fichier `server.js`) a été réorganisé en une architecture modulaire, plus facile à maintenir à mesure que le projet grossit :
+
+```
+backend/src/
+├── server.js          # Point d'entrée
+├── app.js             # Configuration Express
+├── db/                # Connexion PostgreSQL + schéma SQL
+├── routes/             # Routes REST (health, rooms)
+├── services/           # État des salles en mémoire (roomState)
+└── sockets/             # Un fichier par fonctionnalité temps réel
+    ├── room.socket.js       # Entrée/sortie de salle
+    ├── chat.socket.js       # Chat public
+    ├── hand.socket.js       # Levée de main
+    └── moderation.socket.js # Modération et droits
+```
+
+### Nouveauté — gestion des rôles
+Le premier participant à rejoindre une salle devient automatiquement **modérateur** ; les suivants sont **participants** par défaut, avec un rôle **présentateur** disponible sur promotion. Cette logique est centralisée dans `roomState.service.js`, un état en mémoire (à terme, ces informations seront aussi persistées en base pour garder un historique — tables `room_sessions` / `session_participants` déjà créées à cet effet).
+
+### Nouveauté — modération (Phase 3, commencée en avance)
+Le module `moderation.socket.js` implémente : `mute-user` / `unmute-user`, `kick-user`, `promote-presenter` / `revoke-presenter`. Chaque action vérifie que l'émetteur a bien le rôle `moderator` dans la salle avant de l'exécuter (`roomState.isModerator(...)`) — toute tentative par un utilisateur non autorisé est silencieusement ignorée.
+
+## 9.5 Persistance en base de données — mise en place
+
+Un schéma SQL complet (`src/db/schema.sql`) a été créé et exécuté sur PostgreSQL, avec 9 tables couvrant l'ensemble des modules du cahier des charges : `users`, `rooms`, `room_sessions`, `session_participants`, `polls`, `poll_options`, `poll_votes`, `recordings`, `moderation_logs`.
+
+Le backend se connecte à PostgreSQL via un pool de connexions (`pg`), avec une route de vérification dédiée `/api/health/db` qui confirme que l'application (pas seulement la base) peut effectivement communiquer avec PostgreSQL.
+
+### Bug rencontré et corrigé — caractère spécial dans le mot de passe
+La route `/api/health/db` renvoyait une erreur `Invalid URL`. Cause identifiée : le mot de passe PostgreSQL contenait un caractère `/`, qui casse le format d'une URL de connexion (`postgresql://user:motdepasse@host:port/db`), car ce caractère y a une signification particulière (séparateur de chemin). Le mot de passe a été changé (à la fois côté PostgreSQL et dans les fichiers `.env` concernés) pour un mot de passe sans caractères spéciaux ambigus. **Bonne pratique retenue** : éviter `/ @ : # %` dans tout mot de passe destiné à être inséré dans une URL de connexion.
+
+*(Capture d'écran : `docs/screenshots/14-schema-sql-9-tables-creees.png`)*
+*(Capture d'écran : `docs/screenshots/15-api-health-db-connectee.png`)*
+
+## Validation de la modération (test manuel)
+
+En l'absence pour l'instant de boutons dédiés dans l'interface de test, la modération a été validée directement via la console du navigateur, en simulant deux utilisateurs dans la même salle (un modérateur, un participant) :
+
+```
+Tentative mute-user par [participant] sur [modérateur] — autorisé : false
+Tentative mute-user par [modérateur] sur [participant] — autorisé : true
+```
+
+Ce test confirme que seul le modérateur peut effectuer des actions de modération, et que toute tentative par un participant standard est correctement rejetée.
+
+*(Capture d'écran : `docs/screenshots/16-test-moderation-console-terminal.png`)*
+
 ---
 
 ## 6. Développement — Frontend
@@ -232,12 +281,58 @@ Le serveur Express de base est fonctionnel. Cette route `/api/health` servira au
 ---
 
 ## 7. Intégration audio/vidéo (PeerJS / WebRTC)
-*(Mise en place du serveur de signaling, connexion peer-to-peer, serveur TURN coturn — à venir)*
+
+### 7.1 Intégration côté serveur
+Socket.io et le serveur PeerJS (`ExpressPeerServer`) ont été ajoutés au serveur Express existant :
+- **Socket.io** gère l'entrée/sortie des utilisateurs dans une salle (`join-room`) et notifie les autres participants (`user-connected` / `user-disconnected`).
+- **PeerJS server** gère la négociation WebRTC entre les navigateurs.
+
+### 7.2 Page de test minimale
+Une page HTML statique (`backend/public/index.html`) a été créée pour valider la mécanique audio/vidéo indépendamment du frontend React définitif : capture du flux caméra/micro local (`getUserMedia`), connexion à une salle fixe, et appel PeerJS vers les autres participants connectés.
+
+### 7.3 Bug corrigé — chemin PeerJS dupliqué
+Lors du premier test, une erreur 404 est apparue sur l'URL `/peerjs/peerjs/...` : le chemin était compté deux fois, car l'option `path: '/peerjs'` était définie à la fois dans la configuration du serveur PeerJS et dans le montage Express (`app.use('/peerjs', ...)`). Correction : suppression de l'option `path` du côté serveur PeerJS, le préfixe étant déjà géré par `app.use`.
+
+### 7.4 Points en suspens — dépendants de la mise en place HTTPS
+Deux comportements ont été observés lors du premier test, en HTTP (pas encore HTTPS) :
+- **`getUserMedia` indisponible** : les navigateurs modernes désactivent l'accès caméra/micro sur une origine non sécurisée (HTTP) dès qu'on n'est pas sur `localhost`. Un contournement temporaire existe pour le test (flag Chrome `unsafely-treat-insecure-origin-as-secure`), mais la résolution définitive viendra de la mise en place de HTTPS (prévue avec Nginx + Let's Encrypt).
+- **Erreur WebSocket `Invalid frame header`** lors de l'upgrade de connexion Socket.io : cause probable liée à une interception du trafic par un logiciel tiers (antivirus avec inspection web, extension de navigateur) sur la machine de test. À revalider une fois HTTPS en place (le trafic WSS chiffré est généralement moins sujet à ce type d'interception).
+
+**Décision prise** : reporter la validation complète du flux audio/vidéo entre deux navigateurs à la mise en place de HTTPS, plutôt que de bloquer l'avancement du projet sur ce point. Le développement des modules suivants (chat, levée de main) peut se poursuivre en parallèle, car ils ne dépendent pas de `getUserMedia`.
 
 ---
 
 ## 8. Fonctionnalités temps réel
-*(Chat public/privé, sondages, levée de main, notes partagées — à venir)*
+
+### 8.1 Chat public
+Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.
+
+### 8.2 Levée de main
+Ajout de deux événements symétriques `raise-hand` / `lower-hand`, diffusés aux autres participants de la salle (`socket.to(roomId).emit(...)`, l'émetteur n'a pas besoin de se notifier lui-même).
+
+### 8.3 Bugs rencontrés et corrigés
+
+**Bug 1 — Portée de variable (`socket is not defined`)**
+Lors du premier ajout du code, les gestionnaires d'événements `send-message`, `raise-hand` et `lower-hand` avaient été placés par erreur **en dehors** du bloc `io.on('connection', (socket) => { ... })`, rendant la variable `socket` inaccessible. Correction : déplacement de ces gestionnaires à l'intérieur du bloc `connection`.
+
+**Bug 2 — Adresse IP de la VM changée (DHCP)**
+En cours de test, l'adresse IP de la VM est passée de `192.168.1.185` à `192.168.1.21` suite à un redémarrage (attribution dynamique par DHCP). Cela a nécessité la mise à jour de la configuration `coturn` (`--external-ip`) et des URLs de test. Ce point souligne la nécessité, avant un déploiement plus avancé, de réserver une adresse IP fixe pour la VM (réservation DHCP au niveau du routeur, ou configuration réseau statique).
+
+**Bug 3 — Erreur JavaScript bloquant tout le script**
+Le code de test appelait `navigator.mediaDevices.getUserMedia(...)` sans vérifier au préalable que `navigator.mediaDevices` existe. En HTTP (hors `localhost`), cet objet est `undefined`, ce qui provoquait une erreur JavaScript **synchrone** interrompant l'exécution du reste du script — empêchant notamment l'émission de l'événement `join-room`, et donc bloquant entièrement le chat et la levée de main, alors que ces fonctionnalités n'ont pourtant aucun lien avec la caméra. Correction : ajout d'une vérification (`if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia)`) avant l'appel, et réorganisation du code pour que `join-room` soit émis indépendamment de la disponibilité de la caméra.
+
+Cette erreur illustre un principe important à retenir pour la suite du développement : une fonctionnalité non critique (ici la vidéo) ne doit jamais pouvoir bloquer le fonctionnement d'une fonctionnalité indépendante (ici le chat).
+
+### 8.4 Résultat du test
+Test effectué avec deux onglets simultanés sur `http://192.168.1.21:4000` :
+- Envoi de messages : reçus instantanément dans l'autre onglet, avec identifiant de l'expéditeur.
+- Les logs serveur confirment la connexion et l'entrée en salle de chaque client (`Nouvel utilisateur connecté`, `a rejoint la salle salle-test-bigblue`).
+
+*(Capture d'écran : `docs/screenshots/11-chat-public-onglet-1.png`)*
+*(Capture d'écran : `docs/screenshots/12-chat-public-onglet-2.png`)*
+*(Capture d'écran : `docs/screenshots/13-logs-serveur-connexions.png`)*
+
+Le chat public et la levée de main sont validés et fonctionnels. Le partage d'écran et la discussion privée pourront suivre le même schéma (Socket.io) lors de la Phase 3.
 
 ---
 

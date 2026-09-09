@@ -1,20 +1,18 @@
 {
-  "name": "backend",
+  "name": "bigblue-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend de la plateforme de visioconférence BigBlue",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "peer": "^1.0.2",
-    "socket.io": "^4.8.3"
+    "pg": "^8.12.0",
+    "socket.io": "^4.7.5"
   }
 }

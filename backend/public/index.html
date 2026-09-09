@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>BigBlue - Test</title>
+  <style>
+    body { font-family: sans-serif; background: #1e1e1e; color: white; text-align: center; }
+    video { width: 320px; height: 240px; background: black; margin: 10px; border-radius: 8px; }
+    #videos { display: flex; justify-content: center; flex-wrap: wrap; }
+    .panel { max-width: 500px; margin: 20px auto; text-align: left; background: #2a2a2a; padding: 15px; border-radius: 8px; }
+    #messages { height: 180px; overflow-y: auto; background: #1a1a1a; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+    #messages p { margin: 4px 0; }
+    #participants-list { list-style: none; padding: 0; }
+    #participants-list li { padding: 4px 0; }
+    .role-moderator { color: #ff9800; font-weight: bold; }
+    .role-presenter { color: #4caf50; font-weight: bold; }
+    input { padding: 8px; }
+    button { padding: 8px 16px; margin: 4px; cursor: pointer; }
+    #hand-status { font-weight: bold; color: gold; }
+  </style>
+</head>
+<body>
+  <h1>BigBlue — Test</h1>
+  <p>ID de salle : <strong id="room-id"></strong> | Mon ID : <span id="my-id"></span></p>
+  <div id="videos">
+    <video id="my-video" autoplay muted playsinline></video>
+  </div>
+
+  <div class="panel">
+    <h3>👥 Participants</h3>
+    <ul id="participants-list"></ul>
+  </div>
+
+  <div class="panel">
+    <h3>💬 Chat public</h3>
+    <div id="messages"></div>
+    <input id="message-input" placeholder="Ton message..." style="width: 70%;" />
+    <button onclick="sendMessage()">Envoyer</button>
+
+    <h3>✋ Levée de main</h3>
+    <button onclick="toggleHand()">Lever / Baisser la main</button>
+    <p id="hand-status"></p>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    const ROOM_ID = 'salle-test-bigblue';
+    document.getElementById('room-id').innerText = ROOM_ID;
+
+    const myVideo = document.getElementById('my-video');
+    const videosDiv = document.getElementById('videos');
+    const messagesDiv = document.getElementById('messages');
+    const handStatus = document.getElementById('hand-status');
+    const participantsList = document.getElementById('participants-list');
+
+    const socket = io();
+    const peer = new Peer(undefined, {
+      host: window.location.hostname,
+      port: window.location.port,
+      path: '/peerjs'
+    });
+
+    let myId = null;
+    let handRaised = false;
+
+    peer.on('open', id => {
+      myId = id;
+      window.myId = id;      // pour pouvoir tester depuis la console F12
+      window.socket = socket; // idem
+      document.getElementById('my-id').innerText = id.substring(0, 8);
+      socket.emit('join-room', ROOM_ID, id);
+   });
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        myVideo.srcObject = stream;
+        peer.on('call', call => {
+          call.answer(stream);
+          const video = document.createElement('video');
+          video.autoplay = true;
+          video.playsInline = true;
+          call.on('stream', s => { video.srcObject = s; videosDiv.appendChild(video); });
+        });
+        socket.on('user-connected', userId => {
+          const call = peer.call(userId, stream);
+          const video = document.createElement('video');
+          video.autoplay = true;
+          video.playsInline = true;
+          call.on('stream', s => { video.srcObject = s; videosDiv.appendChild(video); });
+        });
+      }).catch(err => {
+        console.warn('Accès caméra/micro refusé ou indisponible :', err);
+      });
+    } else {
+      console.warn('getUserMedia indisponible (contexte non sécurisé - HTTP hors localhost). Le chat et la levée de main restent fonctionnels.');
+    }
+
+    socket.on('receive-message', ({ userId, message }) => {
+      const p = document.createElement('p');
+      const who = userId === myId ? 'Moi' : userId.substring(0, 8);
+      p.innerText = `${who}: ${message}`;
+      messagesDiv.appendChild(p);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      if (!input.value.trim() || !myId) return;
+      socket.emit('send-message', { roomId: ROOM_ID, userId: myId, message: input.value });
+      input.value = '';
+    }
+
+    socket.on('hand-raised', ({ userId }) => {
+      const who = userId === myId ? 'Moi' : userId.substring(0, 8);
+      handStatus.innerText = `✋ ${who} a levé la main`;
+    });
+
+    socket.on('hand-lowered', () => {
+      handStatus.innerText = '';
+    });
+
+    function toggleHand() {
+      if (!myId) return;
+      handRaised = !handRaised;
+      socket.emit(handRaised ? 'raise-hand' : 'lower-hand', { roomId: ROOM_ID, userId: myId });
+    }
+
+    // Liste des participants avec leur rôle (mise à jour à chaque changement)
+    socket.on('room-users', (participants) => {
+      participantsList.innerHTML = '';
+      participants.forEach(p => {
+        const li = document.createElement('li');
+        const who = p.peerId === myId ? 'Moi' : p.peerId.substring(0, 8);
+        const roleClass = p.role === 'moderator' ? 'role-moderator' : (p.role === 'presenter' ? 'role-presenter' : '');
+        li.innerHTML = `${who} — <span class="${roleClass}">${p.role}</span>${p.handRaised ? ' ✋' : ''}`;
+        participantsList.appendChild(li);
+      });
+    });
+
+    socket.on('you-were-kicked', () => {
+      alert('Tu as été expulsé de la salle par le modérateur.');
+    });
+  </script>
+</body>
+</html>
