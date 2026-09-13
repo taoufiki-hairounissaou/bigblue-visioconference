@@ -135,7 +135,7 @@ Configuration ajoutée au `docker-compose.yml` :
     command: >
       -n
       --log-file=stdout
-      --external-ip=192.168.1.185
+      --external-ip=<IP_VM>
       --realm=bigblue.local
       --user=${TURN_USER}:${TURN_PASSWORD}
       --lt-cred-mech
@@ -145,7 +145,7 @@ Configuration ajoutée au `docker-compose.yml` :
 
 Contrairement aux autres services, coturn est configuré en `network_mode: host` : il doit accéder directement au réseau de la VM (et non au réseau isolé créé par Docker Compose) pour que la négociation WebRTC fonctionne correctement à travers le NAT. Une plage de ports UDP dédiée (`49152`–`49252`) est réservée pour le relais des flux média.
 
-Les logs (`docker compose logs coturn`) confirment un démarrage sans erreur, avec un simple avertissement (`NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED`) : coturn a détecté automatiquement 5 adresses réseau disponibles (dont celles créées par Docker) et est prêt à relayer sur toutes. Ce point n'est pas bloquant à ce stade, mais pourra être affiné en Phase 1 en ajoutant explicitement `--relay-ip=192.168.1.185` si des soucis de connectivité WebRTC apparaissent lors des tests.
+Les logs (`docker compose logs coturn`) confirment un démarrage sans erreur, avec un simple avertissement (`NO EXPLICIT RELAY ADDRESS(ES) ARE CONFIGURED`) : coturn a détecté automatiquement 5 adresses réseau disponibles (dont celles créées par Docker) et est prêt à relayer sur toutes. Ce point n'est pas bloquant à ce stade, mais pourra être affiné en Phase 1 en ajoutant explicitement `--relay-ip=<IP_VM>` si des soucis de connectivité WebRTC apparaissent lors des tests.
 
 *(Capture d'écran : `docs/screenshots/09-docker-compose-ps-phase0-complete.png`)*
 
@@ -162,7 +162,27 @@ Cette base servira de fondation pour la Phase 1 (développement du backend Expre
 
 ---
 
-## 5. Développement — Backend
+### 4.7 Fixation de l'adresse IP de la VM
+
+Suite au changement d'IP observé en cours de développement (section 8.3, bug 2), une adresse IP statique a été configurée pour éviter toute réattribution future par DHCP.
+
+La VM utilise NetworkManager (confirmé via `/etc/netplan/*.yaml`, qui délègue la gestion à NetworkManager plutôt que de la faire directement). La configuration a été fixée avec `nmcli` :
+
+```bash
+sudo nmcli connection modify "Connexion filaire 1" \
+  ipv4.addresses <IP_FIXE_VM>/24 \
+  ipv4.gateway <IP_PASSERELLE> \
+  ipv4.dns "<IP_PASSERELLE>,8.8.8.8" \
+  ipv4.method manual
+
+sudo nmcli connection up "Connexion filaire 1"
+```
+
+**Remarque** : l'accès à l'interface d'administration du routeur (qui aurait permis une réservation DHCP, l'approche généralement recommandée) n'a pas été possible faute d'identifiants valides. La configuration IP statique côté VM a donc été retenue comme solution alternative, tout aussi fonctionnelle pour les besoins du projet.
+
+Validation effectuée par redémarrage complet de la VM (`sudo reboot`) suivi d'une vérification (`hostname -I`) : l'adresse IP reste stable après redémarrage.
+
+---
 
 ### 5.1 Initialisation du projet
 Le backend est un projet Node.js séparé, dans le dossier `backend/` du dépôt :
@@ -276,7 +296,57 @@ Ce test confirme que seul le modérateur peut effectuer des actions de modérati
 ---
 
 ## 6. Développement — Frontend
-*(Structure React, composants principaux — à venir)*
+
+### 6.1 Décision de bascule
+Jusqu'ici, les fonctionnalités backend étaient validées via une page de test HTML brute (`backend/public/index.html`), sans aucun souci d'interface ni d'expérience utilisateur. Une fois les mécaniques de base solides (connexion, rôles, chat, levée de main, modération), le choix a été fait de basculer sur le vrai frontend, plutôt que de continuer à accumuler des fonctionnalités côté backend sans interface : un produit qui prend forme visuellement est plus facile à évaluer et à faire évoluer.
+
+### 6.2 Stack et structure
+Frontend construit avec **React** (via **Vite**), dans un dossier `frontend/` séparé du backend :
+```
+frontend/src/
+├── App.jsx                    # Bascule accueil / salle
+├── api/socket.js              # Client Socket.io
+├── hooks/useRoom.js           # Logique centrale : Socket.io + PeerJS + état de la salle
+├── components/
+│   ├── JoinScreen.jsx         # Écran d'accueil
+│   ├── RoomScreen.jsx         # Écran de salle
+│   ├── VideoGrid.jsx / VideoTile.jsx
+│   ├── SidePanel.jsx          # Panneau à onglets Participants/Chat
+│   ├── ParticipantsList.jsx   # Liste + actions de modération
+│   ├── ChatPanel.jsx
+│   └── ControlBar.jsx         # Micro / caméra / main levée
+└── styles/                    # Un fichier CSS par zone
+```
+
+Toute la logique de connexion (rejoindre une salle, écouter les événements Socket.io, gérer les appels PeerJS) est centralisée dans un unique hook réutilisable, `useRoom.js`, ce qui garde les composants d'affichage simples.
+
+### 6.3 Identité visuelle
+Palette sombre dédiée (fond quasi-noir `#14171C`, panneaux ardoise, accent sarcelle `#00C2A8` pour les états actifs/en direct, accent ambre `#F5A623` pour les alertes et la main levée), typographies Space Grotesk (titres) et IBM Plex Sans (contenu) — un choix délibéré plutôt qu'un style par défaut.
+
+### 6.4 Bug corrigé — PeerJS se connectait au service cloud public
+Au premier test, le frontend affichait "Impossible d'établir la connexion audio/vidéo" et aucun participant n'apparaissait dans la liste. La console révélait des requêtes vers `0.peerjs.com` (le service cloud public de PeerJS) au lieu du backend local. Cause : le client PeerJS avait été initialisé avec seulement l'option `path`, sans préciser `host` et `port` — sans ces informations, PeerJS utilise ses valeurs par défaut (le service cloud). Correction :
+```javascript
+const peer = new Peer(undefined, {
+  host: window.location.hostname,
+  port: window.location.port,
+  path: '/peerjs'
+});
+```
+
+### 6.5 Fonctionnement en développement — deux serveurs distincts
+Le frontend (Vite, port `5173`) et le backend (Express, port `4000`) sont deux processus séparés, chacun nécessitant sa propre session terminal active. Un oubli fréquent en cours de test (backend arrêté suite à la fermeture d'une session SSH) provoquait des erreurs `ECONNREFUSED` côté Vite — résolu simplement en relançant le backend. Un proxy Vite (`vite.config.js`) redirige les requêtes `/socket.io`, `/peerjs` et `/api` vers le backend, évitant les soucis de CORS en développement.
+
+### 6.6 Validation
+Test effectué avec deux onglets simultanés sur `http://<IP_VM>:5173`, salle `test1` :
+- Les deux participants apparaissent dans le panneau, avec les rôles corrects (premier arrivant = Modérateur, second = Participant)
+- Les boutons de modération (Mute, Présentateur, Expulser) n'apparaissent que pour le modérateur, et uniquement à côté des autres participants (pas de bouton sur soi-même)
+- La levée de main met à jour l'indicateur visuel dans la liste et active visuellement le bouton de contrôle correspondant
+- Chat et levée de main fonctionnent en temps réel entre les deux onglets
+
+Comme pour la page de test précédente, la vidéo réelle (caméra) reste bloquée par la restriction `getUserMedia` en HTTP — les tuiles vidéo affichent un espace réservé avec les initiales de chaque participant en son absence, plutôt que de casser l'affichage.
+
+*(Capture d'écran : `docs/screenshots/17-frontend-ecran-accueil.png`)*
+*(Capture d'écran : `docs/screenshots/18-frontend-salle-deux-participants.png`)*
 
 ---
 
@@ -316,7 +386,7 @@ Ajout de deux événements symétriques `raise-hand` / `lower-hand`, diffusés a
 Lors du premier ajout du code, les gestionnaires d'événements `send-message`, `raise-hand` et `lower-hand` avaient été placés par erreur **en dehors** du bloc `io.on('connection', (socket) => { ... })`, rendant la variable `socket` inaccessible. Correction : déplacement de ces gestionnaires à l'intérieur du bloc `connection`.
 
 **Bug 2 — Adresse IP de la VM changée (DHCP)**
-En cours de test, l'adresse IP de la VM est passée de `192.168.1.185` à `192.168.1.21` suite à un redémarrage (attribution dynamique par DHCP). Cela a nécessité la mise à jour de la configuration `coturn` (`--external-ip`) et des URLs de test. Ce point souligne la nécessité, avant un déploiement plus avancé, de réserver une adresse IP fixe pour la VM (réservation DHCP au niveau du routeur, ou configuration réseau statique).
+En cours de test, l'adresse IP de la VM a changé suite à un redémarrage (attribution dynamique par DHCP). Cela a nécessité la mise à jour de la configuration `coturn` (`--external-ip`) et des URLs de test. Ce point souligne la nécessité, avant un déploiement plus avancé, de réserver une adresse IP fixe pour la VM (réservation DHCP au niveau du routeur, ou configuration réseau statique — solution finalement retenue, voir section 4.7).
 
 **Bug 3 — Erreur JavaScript bloquant tout le script**
 Le code de test appelait `navigator.mediaDevices.getUserMedia(...)` sans vérifier au préalable que `navigator.mediaDevices` existe. En HTTP (hors `localhost`), cet objet est `undefined`, ce qui provoquait une erreur JavaScript **synchrone** interrompant l'exécution du reste du script — empêchant notamment l'émission de l'événement `join-room`, et donc bloquant entièrement le chat et la levée de main, alors que ces fonctionnalités n'ont pourtant aucun lien avec la caméra. Correction : ajout d'une vérification (`if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia)`) avant l'appel, et réorganisation du code pour que `join-room` soit émis indépendamment de la disponibilité de la caméra.
@@ -324,7 +394,7 @@ Le code de test appelait `navigator.mediaDevices.getUserMedia(...)` sans vérifi
 Cette erreur illustre un principe important à retenir pour la suite du développement : une fonctionnalité non critique (ici la vidéo) ne doit jamais pouvoir bloquer le fonctionnement d'une fonctionnalité indépendante (ici le chat).
 
 ### 8.4 Résultat du test
-Test effectué avec deux onglets simultanés sur `http://192.168.1.21:4000` :
+Test effectué avec deux onglets simultanés sur `http://<IP_VM>:4000` :
 - Envoi de messages : reçus instantanément dans l'autre onglet, avec identifiant de l'expéditeur.
 - Les logs serveur confirment la connexion et l'entrée en salle de chaque client (`Nouvel utilisateur connecté`, `a rejoint la salle salle-test-bigblue`).
 

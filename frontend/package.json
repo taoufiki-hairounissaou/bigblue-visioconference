@@ -1,0 +1,24 @@
+{
+  "name": "bigblue-frontend",
+  "version": "1.0.0",
+  "description": "Frontend de la plateforme de visioconférence BigBlue",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "peerjs": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}

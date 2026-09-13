@@ -1,0 +1,81 @@
+.room-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.room-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+}
+
+.room-header .display {
+  color: var(--accent-live);
+  font-size: 18px;
+}
+
+.room-name {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.room-warning {
+  color: var(--accent-alert);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.room-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btn-ghost:hover { background: var(--bg-panel-raised); }
+
+.btn-danger {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+}
+
+.btn-danger:hover { background: rgba(229, 72, 77, 0.1); }
+
+/* --- Barre de contrôle --- */
+.control-bar {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.btn-control {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-panel-raised);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-control:hover { background: var(--border-subtle); }
+
+.btn-control-active {
+  background: var(--accent-alert-dim);
+  outline: 2px solid var(--accent-alert);
+}
