@@ -130,3 +130,66 @@
   padding: 8px 14px;
   font-size: 13px;
 }
+
+/* --- Sondage --- */
+.poll-panel {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.poll-panel input {
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.poll-question {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.poll-option {
+  position: relative;
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.poll-option:disabled { cursor: default; }
+
+.poll-option-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--accent-live-dim);
+  z-index: 0;
+  transition: width 200ms ease;
+}
+
+.poll-option-label, .poll-option-pct {
+  position: relative;
+  z-index: 1;
+}
+
+.poll-option-pct {
+  float: right;
+  color: var(--text-secondary);
+}
+
+.poll-closed {
+  color: var(--accent-alert);
+  font-size: 13px;
+}
+
+.poll-empty {
+  padding: 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

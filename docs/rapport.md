@@ -372,7 +372,23 @@ Deux comportements ont été observés lors du premier test, en HTTP (pas encore
 
 ---
 
-## 8. Fonctionnalités temps réel
+## Fonctionnalité — Sondages
+
+### Backend
+Un nouveau service `pollState.service.js` gère l'état des sondages en mémoire (un sondage actif par salle). Trois événements Socket.io (`poll.socket.js`) : `create-poll` (réservé au modérateur ou présentateur), `vote-poll` (un seul vote par utilisateur, remplace le précédent en cas de changement d'avis), `close-poll` (réservé au modérateur). Le sondage en cours est aussi envoyé automatiquement à tout nouvel arrivant dans la salle, pour qu'il ne rate pas un sondage déjà lancé.
+
+### Frontend
+Nouveau composant `PollPanel.jsx`, intégré comme troisième onglet du panneau latéral (aux côtés de Participants et Chat). Affiche un formulaire de création (question + options dynamiques) si l'utilisateur a les droits, sinon les résultats en temps réel sous forme de barres de progression proportionnelles aux votes.
+
+### Validation
+Testé avec 3 participants simultanés : création du sondage par le modérateur, apparition instantanée chez les deux autres participants, votes comptabilisés et pourcentages mis à jour en temps réel dans tous les onglets sans rechargement de page.
+
+**Point identifié pour amélioration future** : le rôle d'un participant (modérateur/présentateur) est actuellement lié à sa connexion PeerJS en cours, et est donc perdu en cas de rechargement de page. Une vraie gestion de comptes/sessions persistées en base de données (prévue dans le schéma SQL) résoudrait ce point.
+
+*(Capture d'écran : `docs/screenshots/19-sondage-creation.png`)*
+*(Capture d'écran : `docs/screenshots/20-sondage-votes-temps-reel.png`)*
+
+---
 
 ### 8.1 Chat public
 Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.

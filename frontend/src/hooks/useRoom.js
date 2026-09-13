@@ -9,6 +9,7 @@ export function useRoom(roomId) {
   const [remoteStreams, setRemoteStreams] = useState({}); // peerId -> MediaStream
   const [messages, setMessages] = useState([]);
   const [connectionError, setConnectionError] = useState(null);
+  const [poll, setPoll] = useState(null);
   const [kicked, setKicked] = useState(false);
 
   const peerRef = useRef(null);
@@ -65,6 +66,7 @@ export function useRoom(roomId) {
     });
 
     socket.on('you-were-kicked', () => setKicked(true));
+    socket.on('poll-updated', setPoll);
 
     return () => {
       peer.destroy();
@@ -73,6 +75,7 @@ export function useRoom(roomId) {
       socket.off('receive-message');
       socket.off('user-disconnected');
       socket.off('you-were-kicked');
+      socket.off('poll-updated');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
@@ -122,6 +125,23 @@ export function useRoom(roomId) {
     socket.emit(me.handRaised ? 'lower-hand' : 'raise-hand', { roomId, userId: myId });
   }, [roomId, myId, me]);
 
+  const createPoll = useCallback(
+  (question, options) => {
+    if (!myId) return;
+    socket.emit('create-poll', { roomId, requesterId: myId, question, options });
+  }, [roomId, myId]);
+
+  const votePoll = useCallback(
+  (optionId) => {
+    if (!myId) return;
+    socket.emit('vote-poll', { roomId, userId: myId, optionId });
+  }, [roomId, myId]);
+
+  const closePoll = useCallback(() => {
+    if (!myId) return;
+    socket.emit('close-poll', { roomId, requesterId: myId });
+  }, [roomId, myId]);
+
   const moderate = useCallback(
     (action, targetId) => {
       if (!myId) return;
@@ -147,10 +167,14 @@ export function useRoom(roomId) {
     me,
     connectionError,
     kicked,
+    poll,
     sendMessage,
     toggleHand,
     moderate,
     toggleMic,
-    toggleCamera
+    toggleCamera,
+    createPoll,
+    votePoll,
+    closePoll
   };
 }

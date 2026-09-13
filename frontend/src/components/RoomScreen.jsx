@@ -13,11 +13,15 @@ export default function RoomScreen({ roomId, onLeave }) {
     me,
     connectionError,
     kicked,
+    poll,
     sendMessage,
     toggleHand,
     moderate,
     toggleMic,
-    toggleCamera
+    toggleCamera,
+    createPoll,
+    votePoll,
+    closePoll
   } = useRoom(roomId);
 
   if (kicked) {
@@ -50,6 +54,10 @@ export default function RoomScreen({ roomId, onLeave }) {
           onModerate={moderate}
           messages={messages}
           onSend={sendMessage}
+          poll={poll}
+          onCreatePoll={createPoll}
+          onVotePoll={votePoll}
+          onClosePoll={closePoll}
         />
       </div>
 
