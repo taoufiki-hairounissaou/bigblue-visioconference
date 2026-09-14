@@ -409,6 +409,22 @@ Testé avec 2 participants : le modérateur écrit dans le champ, le texte appar
 
 ---
 
+## Fonctionnalité — Discussion privée
+
+### Backend
+Nouveau module `privateChat.socket.js` : un événement `send-private-message` prenant un expéditeur, un destinataire et un message. Le message est envoyé à la fois au destinataire (via son `socketId`, retrouvé dans l'état de la salle) et à l'expéditeur lui-même, pour que sa propre interface se mette à jour immédiatement.
+
+### Frontend
+Nouveau composant `PrivateChatPanel.jsx`, onglet "Privé" du panneau latéral. Affiche la liste des autres participants sous forme de contacts cliquables ; sélectionner un contact ouvre une conversation filtrée (uniquement les messages échangés entre l'utilisateur courant et ce contact précis), avec son propre champ de saisie.
+
+### Validation
+Testé avec 3 participants simultanés : un message envoyé du modérateur vers un participant précis apparaît dans les deux comptes concernés uniquement — le troisième participant (non destinataire) ne voit rien dans sa messagerie privée. Confirmé également que le message n'apparaît à aucun moment dans le chat public, garantissant l'isolation attendue entre les deux canaux.
+
+*(Capture d'écran : `docs/screenshots/23-message-prive-envoye.png`)*
+*(Capture d'écran : `docs/screenshots/24-message-prive-recu.png`)*
+
+---
+
 ### 8.1 Chat public
 Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.
 

@@ -226,3 +226,44 @@
   color: var(--text-secondary);
   margin: 0;
 }
+
+/* --- Messagerie privée --- */
+.private-chat-panel {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+}
+
+.private-chat-contacts {
+  width: 110px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-subtle);
+  overflow-y: auto;
+}
+
+.private-chat-contacts button {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 10px 8px;
+  font-size: 12px;
+  text-align: left;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.private-chat-contacts button:hover { background: var(--bg-panel-raised); }
+
+.contact-active {
+  color: var(--text-primary) !important;
+  background: var(--bg-panel-raised) !important;
+  border-left: 2px solid var(--accent-live);
+}
+
+.private-chat-conversation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

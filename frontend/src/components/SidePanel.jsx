@@ -3,12 +3,14 @@ import ParticipantsList from './ParticipantsList';
 import ChatPanel from './ChatPanel';
 import PollPanel from './PollPanel';
 import NotesPanel from './NotesPanel';
+import PrivateChatPanel from './PrivateChatPanel';
 
 export default function SidePanel({
   participants, myId, isModerator, onModerate,
   messages, onSend,
   poll, onCreatePoll, onVotePoll, onClosePoll,
-  note, onUpdateNote
+  note, onUpdateNote,
+  privateMessages, onSendPrivate
 }) {
   const [tab, setTab] = useState('participants');
   const me = participants.find((p) => p.peerId === myId);
@@ -28,6 +30,12 @@ export default function SidePanel({
           onClick={() => setTab('chat')}
         >
           Chat
+        </button>
+        <button
+          className={tab === 'private' ? 'tab-active' : ''}
+          onClick={() => setTab('private')}
+        >
+          Privé
         </button>
         <button
           className={tab === 'poll' ? 'tab-active' : ''}
@@ -54,6 +62,14 @@ export default function SidePanel({
         )}
         {tab === 'chat' && (
           <ChatPanel messages={messages} myId={myId} onSend={onSend} />
+        )}
+        {tab === 'private' && (
+          <PrivateChatPanel
+            participants={participants}
+            myId={myId}
+            privateMessages={privateMessages}
+            onSend={onSendPrivate}
+          />
         )}
         {tab === 'poll' && (
           <PollPanel

@@ -11,6 +11,7 @@ export function useRoom(roomId) {
   const [connectionError, setConnectionError] = useState(null);
   const [poll, setPoll] = useState(null);
   const [note, setNote] = useState('');
+  const [privateMessages, setPrivateMessages] = useState([]); // { fromId, toId, message, timestamp }
   const [kicked, setKicked] = useState(false);
 
   const peerRef = useRef(null);
@@ -69,6 +70,9 @@ export function useRoom(roomId) {
     socket.on('you-were-kicked', () => setKicked(true));
     socket.on('poll-updated', setPoll);
     socket.on('note-updated', setNote);
+    socket.on('receive-private-message', (msg) => {
+      setPrivateMessages((prev) => [...prev, msg]);
+    });
 
     return () => {
       peer.destroy();
@@ -79,6 +83,7 @@ export function useRoom(roomId) {
       socket.off('you-were-kicked');
       socket.off('poll-updated');
       socket.off('note-updated');
+      socket.off('receive-private-message');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
@@ -152,6 +157,12 @@ export function useRoom(roomId) {
      socket.emit('update-note', { roomId, requesterId: myId, content });
   }, [roomId, myId]);
 
+  const sendPrivateMessage = useCallback(
+  (toId, text) => {
+    if (!text.trim() || !myId) return;
+    socket.emit('send-private-message', { roomId, fromId: myId, toId, message: text });
+  }, [roomId, myId]);
+
   const moderate = useCallback(
     (action, targetId) => {
       if (!myId) return;
@@ -179,6 +190,7 @@ export function useRoom(roomId) {
     kicked,
     poll,
     note,
+    privateMessages,
     sendMessage,
     toggleHand,
     moderate,
@@ -187,6 +199,7 @@ export function useRoom(roomId) {
     createPoll,
     votePoll,
     closePoll,
-    updateNote
+    updateNote,
+    sendPrivateMessage
   };
 }

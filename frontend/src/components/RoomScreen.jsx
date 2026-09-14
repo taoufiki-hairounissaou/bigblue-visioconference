@@ -15,6 +15,7 @@ export default function RoomScreen({ roomId, onLeave }) {
     kicked,
     poll,
     note,
+    privateMessages,
     sendMessage,
     toggleHand,
     moderate,
@@ -23,7 +24,8 @@ export default function RoomScreen({ roomId, onLeave }) {
     createPoll,
     votePoll,
     closePoll,
-    updateNote
+    updateNote,
+    sendPrivateMessage
   } = useRoom(roomId);
 
   if (kicked) {
@@ -62,6 +64,8 @@ export default function RoomScreen({ roomId, onLeave }) {
           onClosePoll={closePoll}
           note={note}
           onUpdateNote={updateNote}
+          privateMessages={privateMessages}
+          onSendPrivate={sendPrivateMessage}
         />
       </div>
 
