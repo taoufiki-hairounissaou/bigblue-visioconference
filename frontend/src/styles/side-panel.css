@@ -193,3 +193,36 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+/* --- Notes partagées --- */
+.notes-panel {
+  width: 100%;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-textarea {
+  flex: 1;
+  min-height: 300px;
+  background: var(--bg-panel-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  resize: none;
+}
+
+.notes-textarea:read-only {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.notes-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}

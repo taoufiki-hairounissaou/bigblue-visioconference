@@ -2,15 +2,17 @@ import { useState } from 'react';
 import ParticipantsList from './ParticipantsList';
 import ChatPanel from './ChatPanel';
 import PollPanel from './PollPanel';
+import NotesPanel from './NotesPanel';
 
 export default function SidePanel({
   participants, myId, isModerator, onModerate,
   messages, onSend,
-  poll, onCreatePoll, onVotePoll, onClosePoll
+  poll, onCreatePoll, onVotePoll, onClosePoll,
+  note, onUpdateNote
 }) {
   const [tab, setTab] = useState('participants');
   const me = participants.find((p) => p.peerId === myId);
-  const canCreatePoll = me?.role === 'moderator' || me?.role === 'presenter';
+  const canEditShared = me?.role === 'moderator' || me?.role === 'presenter';
 
   return (
     <aside className="side-panel">
@@ -33,6 +35,12 @@ export default function SidePanel({
         >
           Sondage
         </button>
+        <button
+          className={tab === 'notes' ? 'tab-active' : ''}
+          onClick={() => setTab('notes')}
+        >
+          Notes
+        </button>
       </div>
 
       <div className="side-panel-body">
@@ -51,12 +59,15 @@ export default function SidePanel({
           <PollPanel
             poll={poll}
             myId={myId}
-            canCreate={canCreatePoll}
+            canCreate={canEditShared}
             isModerator={isModerator}
             onCreate={onCreatePoll}
             onVote={onVotePoll}
             onClose={onClosePoll}
           />
+        )}
+        {tab === 'notes' && (
+          <NotesPanel note={note} canEdit={canEditShared} onChange={onUpdateNote} />
         )}
       </div>
     </aside>

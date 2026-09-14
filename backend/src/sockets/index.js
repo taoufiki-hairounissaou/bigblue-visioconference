@@ -3,6 +3,7 @@ const registerChatHandlers = require('./chat.socket');
 const registerHandHandlers = require('./hand.socket');
 const registerModerationHandlers = require('./moderation.socket');
 const registerPollHandlers = require('./poll.socket');
+const registerNoteHandlers = require('./note.socket');
 
 function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
@@ -13,6 +14,7 @@ function registerSocketHandlers(io) {
     registerHandHandlers(io, socket);
     registerModerationHandlers(io, socket);
     registerPollHandlers(io, socket);
+    registerNoteHandlers(io, socket);
   });
 }
 

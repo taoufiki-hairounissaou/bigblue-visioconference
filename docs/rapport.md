@@ -390,6 +390,25 @@ Testé avec 3 participants simultanés : création du sondage par le modérateur
 
 ---
 
+## Fonctionnalité — Notes partagées
+
+### Backend
+Service `noteState.service.js` : une note texte par salle, en mémoire. Un seul événement Socket.io (`update-note`), réservé au modérateur ou présentateur (même vérification de rôle que pour les sondages). La note existante est envoyée automatiquement à qui rejoint la salle, comme pour le sondage en cours.
+
+### Frontend
+Nouveau composant `NotesPanel.jsx`, quatrième onglet du panneau latéral. Utilise un `<textarea>` : modifiable pour le modérateur/présentateur, en lecture seule (avec message explicite) pour les autres participants.
+
+### Bug rencontré et corrigé
+Une erreur `Uncaught SyntaxError: Unexpected identifier 'updateNote'` est apparue après l'ajout du nouveau champ dans l'objet retourné par `useRoom.js`. Cause : une virgule manquante entre deux propriétés de l'objet `return { ... }` — une erreur de syntaxe JavaScript classique lors de l'ajout d'un nouveau champ dans un objet existant. Corrigée en ajoutant la virgule manquante.
+
+### Validation
+Testé avec 2 participants : le modérateur écrit dans le champ, le texte apparaît **en temps réel** (sans rechargement) chez le participant, qui ne peut pas le modifier (champ en lecture seule, message explicite affiché).
+
+*(Capture d'écran : `docs/screenshots/21-notes-cote-moderateur.png`)*
+*(Capture d'écran : `docs/screenshots/22-notes-cote-participant-lecture-seule.png`)*
+
+---
+
 ### 8.1 Chat public
 Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.
 

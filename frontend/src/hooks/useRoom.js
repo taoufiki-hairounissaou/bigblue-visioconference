@@ -10,6 +10,7 @@ export function useRoom(roomId) {
   const [messages, setMessages] = useState([]);
   const [connectionError, setConnectionError] = useState(null);
   const [poll, setPoll] = useState(null);
+  const [note, setNote] = useState('');
   const [kicked, setKicked] = useState(false);
 
   const peerRef = useRef(null);
@@ -67,6 +68,7 @@ export function useRoom(roomId) {
 
     socket.on('you-were-kicked', () => setKicked(true));
     socket.on('poll-updated', setPoll);
+    socket.on('note-updated', setNote);
 
     return () => {
       peer.destroy();
@@ -76,6 +78,7 @@ export function useRoom(roomId) {
       socket.off('user-disconnected');
       socket.off('you-were-kicked');
       socket.off('poll-updated');
+      socket.off('note-updated');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
@@ -142,6 +145,13 @@ export function useRoom(roomId) {
     socket.emit('close-poll', { roomId, requesterId: myId });
   }, [roomId, myId]);
 
+  const updateNote = useCallback(
+   (content) => {
+     if (!myId) return;
+     setNote(content); // mise à jour locale immédiate (pas d'attente de l'aller-retour serveur)
+     socket.emit('update-note', { roomId, requesterId: myId, content });
+  }, [roomId, myId]);
+
   const moderate = useCallback(
     (action, targetId) => {
       if (!myId) return;
@@ -168,6 +178,7 @@ export function useRoom(roomId) {
     connectionError,
     kicked,
     poll,
+    note,
     sendMessage,
     toggleHand,
     moderate,
@@ -175,6 +186,7 @@ export function useRoom(roomId) {
     toggleCamera,
     createPoll,
     votePoll,
-    closePoll
+    closePoll,
+    updateNote
   };
 }
