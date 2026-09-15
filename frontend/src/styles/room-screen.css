@@ -79,3 +79,31 @@
   background: var(--accent-alert-dim);
   outline: 2px solid var(--accent-alert);
 }
+
+/* --- Responsive mobile : swipe horizontal entre vidéo et panneau --- */
+@media (max-width: 768px) {
+  .room-body {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .video-grid {
+    min-width: 100vw;
+    scroll-snap-align: start;
+  }
+
+  .side-panel {
+    width: 100vw;
+    min-width: 100vw;
+    scroll-snap-align: start;
+  }
+
+  .side-panel-nav {
+    width: 72px;
+  }
+
+  .nav-label {
+    font-size: 10px;
+  }
+}

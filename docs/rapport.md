@@ -425,6 +425,22 @@ Testé avec 3 participants simultanés : un message envoyé du modérateur vers 
 
 ---
 
+## Amélioration UX — Refonte du panneau latéral et adaptation mobile
+
+### Problème identifié
+Avec l'ajout progressif des onglets (Participants, Chat, Privé, Sondage, Notes), la barre d'onglets horizontale d'origine devenait trop étroite : les libellés se retrouvaient tronqués, en particulier sur petit écran.
+
+### Refonte desktop
+Le panneau latéral est passé d'onglets horizontaux à une **navigation verticale** (icône + libellé empilés), plus lisible et extensible pour d'éventuels futurs modules. Le compteur de participants est affiché en badge sur l'icône correspondante plutôt que dans le libellé.
+
+### Adaptation mobile
+Sur petit écran, la grille vidéo et le panneau latéral occupent chacun la pleine largeur de l'écran, avec une navigation par **glissement horizontal (swipe)** entre les deux zones (`scroll-snap-type`), plutôt que de les compresser côte à côte. Testé et validé sur téléphone : la vidéo s'affiche correctement en plein écran, et le swipe permet d'accéder au panneau (participants, chat, etc.) sans perte de lisibilité.
+
+*(Capture d'écran : `docs/screenshots/25-panneau-lateral-vertical-desktop.png`)*
+*(Capture d'écran : `docs/screenshots/26-adaptation-mobile-swipe.png`)*
+
+---
+
 ### 8.1 Chat public
 Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.
 

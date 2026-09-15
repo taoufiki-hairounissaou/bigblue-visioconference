@@ -5,6 +5,14 @@ import PollPanel from './PollPanel';
 import NotesPanel from './NotesPanel';
 import PrivateChatPanel from './PrivateChatPanel';
 
+const TABS = [
+  { id: 'participants', icon: '👥', label: 'Participants' },
+  { id: 'chat', icon: '💬', label: 'Chat' },
+  { id: 'private', icon: '🔒', label: 'Privé' },
+  { id: 'poll', icon: '📊', label: 'Sondage' },
+  { id: 'notes', icon: '📝', label: 'Notes' }
+];
+
 export default function SidePanel({
   participants, myId, isModerator, onModerate,
   messages, onSend,
@@ -18,38 +26,19 @@ export default function SidePanel({
 
   return (
     <aside className="side-panel">
-      <div className="side-panel-tabs">
-        <button
-          className={tab === 'participants' ? 'tab-active' : ''}
-          onClick={() => setTab('participants')}
-        >
-          Participants ({participants.length})
-        </button>
-        <button
-          className={tab === 'chat' ? 'tab-active' : ''}
-          onClick={() => setTab('chat')}
-        >
-          Chat
-        </button>
-        <button
-          className={tab === 'private' ? 'tab-active' : ''}
-          onClick={() => setTab('private')}
-        >
-          Privé
-        </button>
-        <button
-          className={tab === 'poll' ? 'tab-active' : ''}
-          onClick={() => setTab('poll')}
-        >
-          Sondage
-        </button>
-        <button
-          className={tab === 'notes' ? 'tab-active' : ''}
-          onClick={() => setTab('notes')}
-        >
-          Notes
-        </button>
-      </div>
+      <nav className="side-panel-nav">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={tab === t.id ? 'nav-item-active' : ''}
+            onClick={() => setTab(t.id)}
+          >
+            <span className="nav-icon">{t.icon}</span>
+            <span className="nav-label">{t.label}</span>
+            {t.id === 'participants' && <span className="nav-count">{participants.length}</span>}
+          </button>
+        ))}
+      </nav>
 
       <div className="side-panel-body">
         {tab === 'participants' && (
