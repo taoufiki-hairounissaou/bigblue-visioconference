@@ -609,9 +609,68 @@ Voir la section détaillée « Fonctionnalité — Enregistrement (local et serv
 ---
 
 ## 11. Tests
-*(Tests fonctionnels, tests de charge — à venir)*
+
+### 11.1 Approche adoptée
+Les tests ont été réalisés de manière **continue, fonctionnalité par fonctionnalité**, plutôt qu'en une seule phase de test finale. Chaque module a été validé manuellement avant de passer au suivant, avec plusieurs onglets/appareils simulant plusieurs participants dans une même salle. Cette approche a permis de détecter et corriger les bugs au fur et à mesure (voir les sections dédiées à chaque fonctionnalité pour le détail des bugs rencontrés et de leurs corrections).
+
+### 11.2 Récapitulatif des tests fonctionnels effectués
+| Fonctionnalité | Méthode de test | Résultat |
+|---|---|---|
+| Connexion à une salle | 2-3 onglets simultanés, salle partagée | ✅ Validé |
+| Attribution des rôles | Premier arrivant = modérateur, vérifié après rechargement (avec authentification) | ✅ Validé |
+| Chat public | Envoi de messages entre plusieurs onglets | ✅ Validé |
+| Discussion privée | Message ciblé, vérification qu'il n'apparaît pas dans le chat public ni chez un tiers | ✅ Validé |
+| Levée de main | Indicateur visuel synchronisé entre onglets | ✅ Validé |
+| Modération (mute/kick/promote) | Testé avec vérification explicite des droits (participant non autorisé rejeté) | ✅ Validé |
+| Sondages | Création, vote multi-participants, résultats en temps réel | ✅ Validé |
+| Notes partagées | Édition par le modérateur, lecture seule pour les autres, synchronisation en direct | ✅ Validé |
+| Audio/vidéo (WebRTC) | Flux réel entre deux navigateurs, après mise en place de HTTPS | ✅ Validé |
+| Partage d'écran | Popup native du navigateur, affichage sur la scène principale | ✅ Validé |
+| Enregistrement local | Téléchargement automatique du fichier `.webm` en fin d'enregistrement | ✅ Validé |
+| Enregistrement serveur | Upload vers Minio, entrée créée dans la table `recordings` | ✅ Validé |
+| Authentification | Inscription, connexion, persistance du rôle après rechargement | ✅ Validé |
+| Reverse proxy Nginx | Accès à l'ensemble de l'application via un seul point d'entrée HTTPS | ✅ Validé |
+| Base de données | Connexion applicative testée via `/api/health/db`, 9 tables créées et vérifiées | ✅ Validé |
+
+### 11.3 Tests de robustesse rencontrés en cours de route
+Plusieurs situations imprévues ont été traitées comme des tests de robustesse informels :
+- Changement d'adresse IP de la VM en cours de développement (DHCP) : a révélé la nécessité d'une IP fixe, mise en place par la suite.
+- Backend arrêté involontairement (fermeture de session SSH) : a mis en évidence la dépendance entre frontend et backend, documentée pour les futurs tests.
+- Conflits de ports avec des services déjà présents sur la VM (Minio natif, Nginx natif) : résolus systématiquement par isolation via remappage de port, sans jamais impacter les services préexistants.
+
+### 11.4 Tests non réalisés (limites du projet actuel)
+- **Test de charge** (nombre maximal de participants simultanés avant dégradation) : non réalisé, faute de matériel permettant de simuler un grand nombre de connexions simultanées. Les tests ont été menés avec 2 à 3 participants.
+- **Test multi-réseaux** (participants sur des réseaux différents, nécessitant réellement le relais TURN plutôt qu'une connexion directe) : non réalisé, tous les tests ayant eu lieu sur le même réseau local.
+- **Test de la discussion privée à travers le reverse proxy Nginx** : validé pour les fonctionnalités principales (chat, participants) mais pas explicitement re-testé pour ce module après la mise en place de Nginx.
 
 ---
 
 ## 12. Conclusion et perspectives
-*(Bilan, difficultés rencontrées, améliorations possibles — à venir)*
+
+### 12.1 Bilan
+Le projet BigBlue a été développé en partant d'un cahier des charges initial jusqu'à une plateforme de visioconférence fonctionnelle, couvrant l'ensemble des modules prévus : conférence audio/vidéo, partage d'écran, discussion publique et privée, sondages, notes partagées, levée de main, gestion des droits et modération, enregistrement (local et serveur), et persistance en base de données. Un système d'authentification a également été ajouté en cours de projet, au-delà du périmètre initial, pour résoudre une limite identifiée (rôles non persistants) et rapprocher le projet d'un usage réel.
+
+L'architecture technique repose sur la stack prévue dès le cahier des charges (PeerJS, Socket.io, WebSocket, HTTPS, PostgreSQL, Minio), complétée par Nginx en reverse proxy final et coturn pour la fiabilité des connexions WebRTC.
+
+### 12.2 Difficultés rencontrées
+Le développement a suivi une démarche itérative où chaque fonctionnalité a été testée avant de passer à la suivante, ce qui a permis d'identifier et de documenter une série de bugs concrets, parmi lesquels :
+- Des erreurs de configuration réseau (conflits de ports récurrents avec des services déjà présents sur la VM, IP dynamique nécessitant une configuration statique).
+- Des erreurs de syntaxe JavaScript classiques (virgule manquante, chemin PeerJS dupliqué, portée de variable).
+- Des restrictions de sécurité des navigateurs (`getUserMedia` et `getDisplayMedia` indisponibles hors HTTPS), résolues par la mise en place d'un certificat auto-signé.
+- Un incident d'exposition accidentelle de secrets dans l'historique Git (fichier `.gitignore` perdu lors d'un transfert), corrigé par le retrait des fichiers concernés du suivi Git.
+
+Chacune de ces difficultés a été traitée comme une occasion d'apprentissage plutôt qu'un simple obstacle, et documentée dans les sections correspondantes de ce rapport.
+
+### 12.3 Limites actuelles
+- L'enregistrement capture uniquement le flux local de la personne qui déclenche l'enregistrement, pas un mixage de tous les participants.
+- Aucun test de charge n'a été mené ; le nombre maximal de participants simultanés supportés par l'architecture actuelle (mesh WebRTC plutôt que SFU) reste à déterminer.
+- Le certificat HTTPS utilisé est auto-signé, adapté à un contexte de développement/démonstration mais pas à un déploiement public (qui nécessiterait un nom de domaine et un certificat Let's Encrypt).
+
+### 12.4 Perspectives d'amélioration
+- Mettre en place un test de charge pour déterminer les limites réelles de l'architecture actuelle, et évaluer si une architecture SFU (Selective Forwarding Unit) serait nécessaire au-delà d'un certain nombre de participants.
+- Enrichir la persistance en base de données : historiser les sessions, sondages et messages plutôt que de les garder uniquement en mémoire serveur.
+- Ajouter un mixage audio/vidéo côté serveur pour un enregistrement complet de toutes les sources d'une session.
+- Déployer avec un nom de domaine et un certificat Let's Encrypt pour un accès public sans avertissement de sécurité.
+- Ajouter des tests automatisés (actuellement, toute la validation a été manuelle).
+
+---
