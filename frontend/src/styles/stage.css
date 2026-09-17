@@ -1,0 +1,129 @@
+.room-body-v2 {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stage-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px;
+  gap: 14px;
+}
+
+.stage-main {
+  flex: 1;
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.stage-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.stage-placeholder {
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+}
+
+.stage-label {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- Bande d'avatars des participants --- */
+.avatar-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  flex-shrink: 0;
+}
+
+.avatar-tile {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bg-panel-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid var(--border-subtle);
+}
+
+.role-ring-moderator { border-color: var(--accent-live); }
+.role-ring-presenter { border-color: var(--accent-alert); }
+.role-ring-self { border-color: var(--text-secondary); }
+
+.avatar-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-initials {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text-secondary);
+}
+
+.avatar-label {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 0;
+}
+
+.avatar-badge {
+  position: absolute;
+  top: -2px;
+  font-size: 12px;
+  background: var(--bg-base);
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.avatar-badge-hand { right: -2px; }
+.avatar-badge-mute { left: -2px; }
+
+/* --- Responsive mobile --- */
+@media (max-width: 768px) {
+  .avatar-tile {
+    width: 64px;
+    height: 64px;
+  }
+
+  .stage-view {
+    padding: 10px;
+    gap: 10px;
+  }
+}

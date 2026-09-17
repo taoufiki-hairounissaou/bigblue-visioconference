@@ -45,3 +45,24 @@
 .btn-primary:hover { opacity: 0.9; }
 
 .btn-block { width: 100%; }
+
+.auth-error {
+  color: var(--accent-danger);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.auth-switch {
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 16px;
+  text-decoration: underline;
+}
+
+.auth-switch:hover { color: var(--text-primary); }
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

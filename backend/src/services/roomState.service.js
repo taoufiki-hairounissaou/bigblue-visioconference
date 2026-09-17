@@ -1,8 +1,6 @@
-// État en mémoire des salles actives.
-// NOTE : ceci est volontairement simple pour l'instant (pas de persistance).
-// À terme, ces informations seront aussi écrites dans PostgreSQL (tables
-// room_sessions / session_participants) pour garder un historique.
+const roomRoles = require('./roomRoles.service');
 
+// État en mémoire des salles actives.
 const rooms = new Map(); // roomId -> Map(peerId -> participant)
 
 function getRoom(roomId) {
@@ -12,14 +10,24 @@ function getRoom(roomId) {
   return rooms.get(roomId);
 }
 
-function addParticipant(roomId, peerId, socketId) {
+function addParticipant(roomId, peerId, socketId, userId, username) {
   const room = getRoom(roomId);
-  const isFirst = room.size === 0;
+
+  // Rôle : on retrouve le rôle déjà attribué à cet utilisateur authentifié
+  // dans cette salle (persistant tant que le serveur tourne), sinon le
+  // premier utilisateur authentifié à rejoindre devient modérateur.
+  let role = userId ? roomRoles.getRole(roomId, userId) : undefined;
+  if (!role) {
+    role = userId && !roomRoles.hasModerator(roomId) ? 'moderator' : 'participant';
+    if (userId) roomRoles.setRole(roomId, userId, role);
+  }
 
   const participant = {
     peerId,
     socketId,
-    role: isFirst ? 'moderator' : 'participant', // le premier arrivé devient modérateur
+    userId: userId || null,
+    username: username || null,
+    role,
     handRaised: false,
     muted: false
   };
@@ -49,6 +57,12 @@ function updateParticipant(roomId, peerId, changes) {
   const participant = getParticipant(roomId, peerId);
   if (!participant) return null;
   Object.assign(participant, changes);
+
+  // Si le rôle change (promotion/révocation/kick), on garde la persistance à jour
+  if (changes.role && participant.userId) {
+    roomRoles.setRole(roomId, participant.userId, changes.role);
+  }
+
   return participant;
 }
 

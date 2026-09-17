@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function JoinScreen({ onJoin }) {
+export default function JoinScreen({ user, onJoin, onLogout }) {
   const [roomInput, setRoomInput] = useState('');
 
   const submit = (e) => {
@@ -12,7 +12,7 @@ export default function JoinScreen({ onJoin }) {
     <div className="join-screen">
       <div className="join-card">
         <h1 className="display">BigBlue</h1>
-        <p className="join-subtitle">Rejoindre une salle de visioconférence</p>
+        <p className="join-subtitle">Bonjour {user.displayName} — rejoindre une salle</p>
         <form onSubmit={submit}>
           <input
             autoFocus
@@ -22,6 +22,7 @@ export default function JoinScreen({ onJoin }) {
           />
           <button type="submit" className="btn-primary btn-block">Entrer</button>
         </form>
+        <button className="auth-switch" onClick={onLogout}>Se déconnecter</button>
       </div>
     </div>
   );

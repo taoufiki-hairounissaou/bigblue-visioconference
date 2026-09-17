@@ -370,6 +370,17 @@ Deux comportements ont été observés lors du premier test, en HTTP (pas encore
 
 **Décision prise** : reporter la validation complète du flux audio/vidéo entre deux navigateurs à la mise en place de HTTPS, plutôt que de bloquer l'avancement du projet sur ce point. Le développement des modules suivants (chat, levée de main) peut se poursuivre en parallèle, car ils ne dépendent pas de `getUserMedia`.
 
+### 7.5 Résolution — mise en place de HTTPS (certificat auto-signé)
+Un certificat Let's Encrypt classique nécessite un nom de domaine public pointant vers la VM, ce qui n'est pas disponible dans ce contexte (VM sur réseau local, sans domaine). Un **certificat auto-signé** a donc été généré pour le développement :
+```bash
+openssl req -x509 -newkey rsa:2048 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes -subj "/CN=<IP_VM>"
+```
+Le serveur de développement Vite a été configuré pour l'utiliser directement (`server.https` dans `vite.config.js`), rendant le frontend accessible en HTTPS sans passer par Nginx à ce stade.
+
+**Résultat** : `getUserMedia` et `getDisplayMedia` (partage d'écran) sont désormais pleinement fonctionnels — testés avec succès avec plusieurs participants simultanés, vidéo réelle affichée dans l'interface (remplaçant les espaces réservés avec initiales utilisés jusque-là).
+
+*(Capture d'écran : `docs/screenshots/27-https-badge-securise-video.png`)*
+
 ---
 
 ## Fonctionnalité — Sondages
@@ -441,6 +452,71 @@ Sur petit écran, la grille vidéo et le panneau latéral occupent chacun la ple
 
 ---
 
+## Fonctionnalité — Partage d'écran
+
+### Backend
+Module `screenShare.socket.js` : deux événements, `start-screen-share` (réservé au modérateur/présentateur) et `stop-screen-share`, diffusés à la salle pour informer les autres participants qu'un partage est en cours (et par qui).
+
+### Frontend
+Le partage d'écran utilise l'API `getDisplayMedia`, avec une connexion PeerJS **distincte** de celle de la caméra : l'appel est marqué avec des métadonnées (`{ metadata: { type: 'screen' } }`) pour que les destinataires distinguent un flux d'écran partagé d'un flux caméra classique et l'affichent différemment (en grand, sur la scène principale, plutôt que dans la bande de participants).
+
+### Dépendance à HTTPS
+Comme `getUserMedia`, l'API `getDisplayMedia` est bloquée par les navigateurs en dehors d'un contexte sécurisé (HTTPS). Le partage d'écran n'a donc pu être testé complètement qu'après la mise en place du certificat auto-signé (section 7.5).
+
+### Validation
+Testé avec succès : la popup native du navigateur (sélection d'un onglet, d'une fenêtre ou de l'écran complet) s'affiche correctement, le flux partagé apparaît en grand sur la scène principale avec le libellé du participant qui partage.
+
+*(Capture d'écran : `docs/screenshots/28-partage-ecran-popup-navigateur.png`)*
+*(Capture d'écran : `docs/screenshots/29-partage-ecran-affiche-scene.png`)*
+
+---
+
+## Fonctionnalité — Enregistrement (local et serveur)
+
+### Backend
+Une route REST `POST /api/recordings/upload` (avec `multer` pour gérer l'upload de fichier en mémoire) reçoit l'enregistrement, l'envoie vers **Minio** via un client dédié (`minio.service.js`, bucket `recordings`), et enregistre une entrée dans la table `recordings` de PostgreSQL (métadonnées).
+
+### Frontend
+Utilisation de l'API `MediaRecorder` sur le flux caméra/micro local. À l'arrêt de l'enregistrement, deux actions sont déclenchées simultanément :
+1. **Enregistrement local** : le fichier est proposé au téléchargement direct dans le navigateur (`<a download>`).
+2. **Enregistrement serveur** : le même fichier est envoyé au backend via `fetch` (`FormData`), qui le stocke dans Minio.
+
+Le bouton d'enregistrement dans la barre de contrôle change d'apparence (rouge, pulsant) pendant l'enregistrement actif.
+
+### Limite connue
+L'enregistrement capture uniquement le flux local (caméra/micro de l'utilisateur qui déclenche l'enregistrement), pas un mixage de tous les participants de la salle. Une solution de mixage côté serveur (ex. via un composant MCU) pourrait être envisagée dans une itération future, mais dépasse le cadre de ce projet.
+
+*(Capture d'écran : `docs/screenshots/30-enregistrement-actif-bouton-rouge.png`)*
+*(Capture d'écran : `docs/screenshots/31-fichier-enregistrement-minio.png`)*
+
+---
+
+## Fonctionnalité — Authentification
+
+### Contexte et motivation
+Jusqu'ici, l'identité d'un participant (et donc son rôle modérateur/présentateur) était liée à son identifiant PeerJS, généré aléatoirement à chaque connexion — un rechargement de page faisait perdre le rôle attribué. L'ajout d'un système de comptes résout ce problème et donne enfin un usage à la table `users`, présente dans le schéma SQL depuis la Phase 9 mais inutilisée jusque-là.
+
+### Backend
+- **Hachage des mots de passe** avec `bcrypt` (jamais stockés en clair).
+- **Jetons JWT** (`jsonwebtoken`) générés à l'inscription et à la connexion, valables 7 jours, contenant l'identifiant utilisateur et le nom affiché.
+- Routes `POST /api/auth/register` et `POST /api/auth/login`.
+- Migration SQL (`ALTER TABLE users ADD COLUMN password_hash`) pour ajouter le mot de passe haché à la table existante sans la recréer.
+- **Persistance des rôles par utilisateur** (`roomRoles.service.js`) : le rôle (modérateur/présentateur/participant) est désormais mémorisé par couple salle/utilisateur authentifié, et non plus par connexion PeerJS temporaire — un rechargement de page ne fait donc plus perdre le rôle.
+- Le token JWT est transmis lors du `join-room` (Socket.io) et vérifié côté serveur pour identifier l'utilisateur.
+
+### Frontend
+- Nouvel écran `AuthScreen.jsx` (connexion / inscription, avec bascule entre les deux modes), affiché avant l'écran de sélection de salle.
+- Le token et les informations utilisateur sont conservés dans `localStorage` (persistant entre les sessions du navigateur).
+- Le **vrai nom affiché** (plutôt que l'identifiant technique tronqué) est désormais utilisé partout dans l'interface : liste des participants, chat public, messages privés, avatars de la scène principale.
+
+### Validation
+Testé avec deux comptes distincts : inscription, connexion, attribution du rôle modérateur au premier utilisateur authentifié à rejoindre une salle donnée, affichage cohérent des noms réels dans tous les panneaux (participants, chat, privé) et sur les avatars de la bande vidéo.
+
+*(Capture d'écran : `docs/screenshots/32-ecran-connexion.png`)*
+*(Capture d'écran : `docs/screenshots/33-salle-avec-vrais-noms-partage-ecran.png`)*
+
+---
+
 ### 8.1 Chat public
 Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.
 
@@ -507,7 +583,7 @@ Les deux conteneurs sont opérationnels. L'accès à la console web Minio (`http
 ---
 
 ## 10. Enregistrement
-*(Enregistrement serveur et local, stockage dans Minio — à venir)*
+Voir la section détaillée « Fonctionnalité — Enregistrement (local et serveur) » plus haut dans ce document.
 
 ---
 

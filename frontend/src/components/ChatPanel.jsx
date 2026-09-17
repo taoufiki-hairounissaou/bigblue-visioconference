@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function ChatPanel({ messages, myId, onSend }) {
+function resolveName(peerId, myId, participants) {
+  if (peerId === myId) return 'Moi';
+  const p = participants.find((x) => x.peerId === peerId);
+  return p?.username || peerId.substring(0, 8);
+}
+
+export default function ChatPanel({ messages, myId, participants, onSend }) {
   const [draft, setDraft] = useState('');
   const listRef = useRef(null);
 
@@ -20,7 +26,7 @@ export default function ChatPanel({ messages, myId, onSend }) {
         {messages.length === 0 && <p className="chat-empty">Aucun message pour l'instant.</p>}
         {messages.map((m, i) => (
           <p key={i} className="chat-message">
-            <span className="chat-author">{m.userId === myId ? 'Moi' : m.userId.substring(0, 8)}</span>
+            <span className="chat-author">{resolveName(m.userId, myId, participants)}</span>
             {m.message}
           </p>
         ))}

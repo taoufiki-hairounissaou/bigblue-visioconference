@@ -1,5 +1,11 @@
 import { useState, useMemo } from 'react';
 
+function resolveName(peerId, myId, participants) {
+  if (peerId === myId) return 'Moi';
+  const p = participants.find((x) => x.peerId === peerId);
+  return p?.username || peerId.substring(0, 8);
+}
+
 export default function PrivateChatPanel({ participants, myId, privateMessages, onSend }) {
   const [activePeerId, setActivePeerId] = useState(null);
   const [draft, setDraft] = useState('');
@@ -34,7 +40,7 @@ export default function PrivateChatPanel({ participants, myId, privateMessages, 
             className={activePeerId === p.peerId ? 'contact-active' : ''}
             onClick={() => setActivePeerId(p.peerId)}
           >
-            {p.peerId.substring(0, 8)}
+            {p.username || p.peerId.substring(0, 8)}
           </button>
         ))}
       </div>
@@ -45,7 +51,7 @@ export default function PrivateChatPanel({ participants, myId, privateMessages, 
             {conversation.length === 0 && <p className="chat-empty">Aucun message échangé.</p>}
             {conversation.map((m, i) => (
               <p key={i} className="chat-message">
-                <span className="chat-author">{m.fromId === myId ? 'Moi' : m.fromId.substring(0, 8)}</span>
+                <span className="chat-author">{resolveName(m.fromId, myId, participants)}</span>
                 {m.message}
               </p>
             ))}

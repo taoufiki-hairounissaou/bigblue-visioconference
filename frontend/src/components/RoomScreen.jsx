@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { useRoom } from '../hooks/useRoom';
-import VideoGrid from './VideoGrid';
-import SidePanel from './SidePanel';
+import RoomHeader from './RoomHeader';
+import StageView from './StageView';
 import ControlBar from './ControlBar';
+import PanelDrawer from './PanelDrawer';
 
-export default function RoomScreen({ roomId, onLeave }) {
+export default function RoomScreen({ roomId, auth, onLeave }) {
+  const [activePanel, setActivePanel] = useState(null);
+
   const {
     myId,
     myStream,
@@ -16,6 +20,9 @@ export default function RoomScreen({ roomId, onLeave }) {
     poll,
     note,
     privateMessages,
+    screenStream,
+    sharingPeerId,
+    isRecording,
     sendMessage,
     toggleHand,
     moderate,
@@ -25,8 +32,12 @@ export default function RoomScreen({ roomId, onLeave }) {
     votePoll,
     closePoll,
     updateNote,
-    sendPrivateMessage
-  } = useRoom(roomId);
+    sendPrivateMessage,
+    toggleScreenShare,
+    toggleRecording
+  } = useRoom(roomId, auth);
+
+  const togglePanel = (id) => setActivePanel((prev) => (prev === id ? null : id));
 
   if (kicked) {
     return (
@@ -42,16 +53,27 @@ export default function RoomScreen({ roomId, onLeave }) {
 
   return (
     <div className="room-screen">
-      <header className="room-header">
-        <span className="display">BigBlue</span>
-        <span className="room-name">Salle : {roomId}</span>
-        {connectionError && <span className="room-warning">{connectionError}</span>}
-        <button className="btn-ghost btn-danger" onClick={onLeave}>Quitter</button>
-      </header>
+      <RoomHeader
+        roomId={roomId}
+        participantCount={participants.length}
+        connectionError={connectionError}
+        onLeave={onLeave}
+      />
 
-      <div className="room-body">
-        <VideoGrid myId={myId} myStream={myStream} participants={participants} remoteStreams={remoteStreams} />
-        <SidePanel
+      <div className="room-body-v2">
+        <StageView
+          myId={myId}
+          myUsername={auth?.user?.displayName}
+          myStream={myStream}
+          participants={participants}
+          remoteStreams={remoteStreams}
+          screenStream={screenStream}
+          sharingPeerId={sharingPeerId}
+        />
+
+        <PanelDrawer
+          activePanel={activePanel}
+          onClose={() => setActivePanel(null)}
           participants={participants}
           myId={myId}
           isModerator={me?.role === 'moderator'}
@@ -71,9 +93,16 @@ export default function RoomScreen({ roomId, onLeave }) {
 
       <ControlBar
         handRaised={!!me?.handRaised}
+        isSharing={sharingPeerId === myId}
+        isRecording={isRecording}
+        activePanel={activePanel}
+        participantCount={participants.length}
         onToggleHand={toggleHand}
         onToggleMic={toggleMic}
         onToggleCamera={toggleCamera}
+        onToggleScreenShare={toggleScreenShare}
+        onToggleRecording={toggleRecording}
+        onTogglePanel={togglePanel}
       />
     </div>
   );

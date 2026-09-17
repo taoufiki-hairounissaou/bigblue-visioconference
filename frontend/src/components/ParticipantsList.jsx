@@ -4,6 +4,10 @@ const ROLE_LABEL = {
   participant: 'Participant'
 };
 
+function displayName(p) {
+  return p.username || p.peerId.substring(0, 8);
+}
+
 export default function ParticipantsList({ participants, myId, isModerator, onModerate }) {
   return (
     <ul className="participants-list">
@@ -12,7 +16,7 @@ export default function ParticipantsList({ participants, myId, isModerator, onMo
         return (
           <li key={p.peerId} className="participant-row">
             <div className="participant-info">
-              <span className="participant-name">{isSelf ? 'Moi' : p.peerId.substring(0, 8)}</span>
+              <span className="participant-name">{isSelf ? 'Moi' : displayName(p)}</span>
               <span className={`role-badge role-${p.role}`}>{ROLE_LABEL[p.role]}</span>
               {p.handRaised && <span className="hand-indicator" title="Main levée">✋</span>}
               {p.muted && <span className="mute-indicator" title="Muet">🔇</span>}
