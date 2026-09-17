@@ -30,10 +30,15 @@ services:
     image: nginx:alpine
     container_name: bigblue_nginx
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8082:80"
+      - "8444:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ../frontend/dist:/usr/share/nginx/html:ro 
 
   coturn:
     image: coturn/coturn

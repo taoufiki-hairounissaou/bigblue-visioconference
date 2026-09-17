@@ -517,6 +517,27 @@ Testé avec deux comptes distincts : inscription, connexion, attribution du rôl
 
 ---
 
+## Fonctionnalité — Nginx en reverse proxy final
+
+### Objectif
+Jusqu'ici, le frontend (serveur de développement Vite, port 5173) et le backend (port 4000) étaient accessibles séparément. Pour se rapprocher d'une architecture de production, Nginx a été configuré comme **point d'entrée unique** : il sert les fichiers statiques du frontend buildé (`npm run build`) et redirige les appels API (`/api/`), Socket.io (`/socket.io/`) et PeerJS (`/peerjs/`) vers le backend Node.js.
+
+### Configuration
+- Le frontend est buildé en production (`npm run build`, dossier `dist/`), monté en lecture seule dans le conteneur Nginx.
+- Nginx écoute en HTTPS (port interne 443, mappé sur un port externe pour éviter les conflits — voir ci-dessous), avec le certificat auto-signé généré précédemment.
+- Comme le backend Node.js tourne directement sur la VM (hors Docker), le conteneur Nginx utilise `extra_hosts: host.docker.internal:host-gateway` pour pouvoir l'atteindre depuis l'intérieur de Docker.
+- Les en-têtes `Upgrade`/`Connection: upgrade` sont transmis sur les routes `/socket.io/` et `/peerjs/` pour permettre le bon fonctionnement des connexions WebSocket à travers le proxy.
+
+### Conflit de port rencontré
+Comme pour Minio et le premier Nginx de test (section 9.3 et 4.2), le port 8443 initialement choisi pour Nginx en HTTPS était déjà occupé par un **Nginx installé nativement** sur la VM (probablement un reliquat d'un exercice antérieur). Résolu en remappant sur le port 8444, sans toucher à l'installation existante — une nouvelle illustration de l'avantage de l'architecture en conteneurs pour isoler les projets sur une même machine partagée.
+
+### Validation
+Testé avec succès sur `https://<IP_VM>:8444` : chargement du frontend, connexion (authentification), entrée en salle, chat et panneaux fonctionnels — confirmant que le reverse proxy relaie correctement à la fois les requêtes HTTP classiques (API REST) et les connexions WebSocket (Socket.io, PeerJS).
+
+*(Capture d'écran : `docs/screenshots/34-nginx-reverse-proxy-fonctionnel.png`)*
+
+---
+
 ### 8.1 Chat public
 Ajout côté serveur d'un événement Socket.io `send-message`, diffusé à toute la salle via `io.to(roomId).emit('receive-message', ...)`. Côté client (page de test), un champ de saisie et une zone d'affichage des messages ont été ajoutés.
 
