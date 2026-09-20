@@ -486,8 +486,12 @@ Le bouton d'enregistrement dans la barre de contrôle change d'apparence (rouge,
 ### Limite connue
 L'enregistrement capture uniquement le flux local (caméra/micro de l'utilisateur qui déclenche l'enregistrement), pas un mixage de tous les participants de la salle. Une solution de mixage côté serveur (ex. via un composant MCU) pourrait être envisagée dans une itération future, mais dépasse le cadre de ce projet.
 
+### Vérification côté stockage Minio
+Un point initialement non vérifié explicitement : la confirmation que les fichiers arrivent bien physiquement dans Minio (et pas seulement que le code semble correct). Vérification effectuée via la console web Minio (`http://<IP_VM>:9003`) : le bucket `recordings` contient bien les enregistrements, organisés en sous-dossiers par identifiant de salle (`<roomId>/<timestamp>.webm`), conformément à la logique du code (`src/routes/recordings.routes.js`). Cette vérification a permis de confirmer que la chaîne complète — capture navigateur → upload backend → stockage Minio — fonctionne réellement de bout en bout, et pas seulement en théorie.
+
 *(Capture d'écran : `docs/screenshots/30-enregistrement-actif-bouton-rouge.png`)*
 *(Capture d'écran : `docs/screenshots/31-fichier-enregistrement-minio.png`)*
+*(Capture d'écran : `docs/screenshots/35-verification-bucket-recordings-minio.png`)*
 
 ---
 
@@ -535,6 +539,34 @@ Comme pour Minio et le premier Nginx de test (section 9.3 et 4.2), le port 8443 
 Testé avec succès sur `https://<IP_VM>:8444` : chargement du frontend, connexion (authentification), entrée en salle, chat et panneaux fonctionnels — confirmant que le reverse proxy relaie correctement à la fois les requêtes HTTP classiques (API REST) et les connexions WebSocket (Socket.io, PeerJS).
 
 *(Capture d'écran : `docs/screenshots/34-nginx-reverse-proxy-fonctionnel.png`)*
+
+---
+
+## Amélioration UX — Page d'accueil et parcours Démarrer/Rejoindre
+
+### Contexte
+Jusqu'ici, un visiteur arrivait directement sur l'écran de connexion, sans aucune présentation du produit — une expérience peu engageante comparée aux plateformes de visioconférence commerciales (Zoom, Google Meet), qui présentent toutes une page d'accueil avant de demander une connexion.
+
+### Page d'accueil (`LandingPage.jsx`)
+Nouvelle page de présentation avant l'authentification, avec :
+- Un en-tête fixe (sticky) avec le bouton "Se connecter"
+- Une section d'en-tête (hero) avec titre accrocheur et appel à l'action
+- Six cartes présentant chaque fonctionnalité clé (vidéo, partage d'écran, chat, sondages, notes, modération)
+- Une section « vitrine » avec une illustration de réunion — une grille d'avatars colorés construite entièrement en CSS (pas d'image ou de vidéo externe à héberger, cohérent avec l'identité visuelle déjà en place)
+- Un appel à l'action final
+
+### Écran Démarrer/Rejoindre (`StartJoinScreen.jsx`)
+Remplace l'ancien champ unique "nom de salle" par deux parcours distincts, comme sur les plateformes de référence :
+- **Démarrer une réunion** : nom optionnel (un code aléatoire est généré si vide), l'utilisateur devient modérateur (logique déjà en place : premier arrivant authentifié dans une salle).
+- **Rejoindre une réunion** : code de salle obligatoire, à partager par l'organisateur.
+
+Les deux parcours utilisent le même mécanisme technique côté backend (`join-room`) ; la distinction est purement une amélioration d'expérience utilisateur, sans modification du backend.
+
+### Validation
+Testé le parcours complet : page d'accueil → clic sur "Se connecter" → authentification → écran Démarrer/Rejoindre (affichant le nom réel de l'utilisateur connecté) → salle. Chaque étape s'enchaîne correctement.
+
+*(Capture d'écran : `docs/screenshots/36-landing-page-hero.png`)*
+*(Capture d'écran : `docs/screenshots/37-demarrer-rejoindre-reunion.png`)*
 
 ---
 
@@ -627,7 +659,7 @@ Les tests ont été réalisés de manière **continue, fonctionnalité par fonct
 | Audio/vidéo (WebRTC) | Flux réel entre deux navigateurs, après mise en place de HTTPS | ✅ Validé |
 | Partage d'écran | Popup native du navigateur, affichage sur la scène principale | ✅ Validé |
 | Enregistrement local | Téléchargement automatique du fichier `.webm` en fin d'enregistrement | ✅ Validé |
-| Enregistrement serveur | Upload vers Minio, entrée créée dans la table `recordings` | ✅ Validé |
+| Enregistrement serveur | Upload vers Minio, **vérifié directement dans la console Minio** (fichiers présents dans le bucket `recordings`, organisés par salle) | ✅ Validé |
 | Authentification | Inscription, connexion, persistance du rôle après rechargement | ✅ Validé |
 | Reverse proxy Nginx | Accès à l'ensemble de l'application via un seul point d'entrée HTTPS | ✅ Validé |
 | Base de données | Connexion applicative testée via `/api/health/db`, 9 tables créées et vérifiées | ✅ Validé |

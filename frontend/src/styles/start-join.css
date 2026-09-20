@@ -1,0 +1,73 @@
+.start-join-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.start-join-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.start-join-user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.start-join-cards {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 40px 24px;
+  flex-wrap: wrap;
+}
+
+.start-join-card {
+  width: 300px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.start-join-icon {
+  font-size: 32px;
+}
+
+.start-join-card h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0;
+}
+
+.start-join-card p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.start-join-card input {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .start-join-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
