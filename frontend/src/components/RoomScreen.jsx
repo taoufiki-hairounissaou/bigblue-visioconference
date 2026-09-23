@@ -74,6 +74,7 @@ export default function RoomScreen({ roomId, auth, onLeave }) {
         <PanelDrawer
           activePanel={activePanel}
           onClose={() => setActivePanel(null)}
+          roomId={roomId}
           participants={participants}
           myId={myId}
           isModerator={me?.role === 'moderator'}

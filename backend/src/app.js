@@ -5,6 +5,7 @@ const healthRoutes = require('./routes/health.routes');
 const roomsRoutes = require('./routes/rooms.routes');
 const recordingsRoutes = require('./routes/recordings.routes');
 const authRoutes = require('./routes/auth.routes');
+const notesRoutes = require('./routes/notes.routes');
 
 const app = express();
 
@@ -16,5 +17,6 @@ app.use('/api/health', healthRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api/recordings', recordingsRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/notes', notesRoutes);
 
 module.exports = app;

@@ -418,6 +418,17 @@ Testé avec 2 participants : le modérateur écrit dans le champ, le texte appar
 *(Capture d'écran : `docs/screenshots/21-notes-cote-moderateur.png`)*
 *(Capture d'écran : `docs/screenshots/22-notes-cote-participant-lecture-seule.png`)*
 
+### Amélioration — Export PDF (local + serveur)
+Ajout d'une fonctionnalité d'export : un bouton « Télécharger en PDF » dans le panneau Notes génère un document PDF à partir du contenu texte de la note, avec la même logique que l'enregistrement (section « Fonctionnalité — Enregistrement ») :
+- **Backend** : route `GET /api/notes/:roomId/export`, utilisant la bibliothèque `pdfkit` pour générer le PDF à la volée à partir du texte stocké côté serveur (`noteState.getNote(roomId)`), sans dépendre du contenu envoyé par le client (toujours la version la plus à jour).
+- **Stockage serveur** : le PDF généré est également envoyé vers Minio, dans le même bucket que les enregistrements (`recordings`), sous un sous-dossier dédié `notes/<roomId>/<timestamp>.pdf` — réutilisation du bucket existant plutôt que création d'un bucket dédié, pour rester simple.
+- **Téléchargement local** : la réponse HTTP porte un en-tête `Content-Disposition: attachment`, ce qui déclenche le téléchargement direct dans le navigateur sans code JavaScript supplémentaire côté client.
+- Le bouton est désactivé tant qu'aucune note n'a été écrite, pour éviter un export vide.
+
+**Validation** : testé avec des notes contenant du texte réel — le fichier PDF se télécharge correctement dans le navigateur, et une copie identique est retrouvée dans la console Minio (bucket `recordings`, dossier `notes/<nom-salle>/`), confirmant que la chaîne complète (génération → téléchargement → stockage serveur) fonctionne de bout en bout.
+
+*(Capture d'écran : `docs/screenshots/38-export-pdf-notes-minio.png`)*
+
 ---
 
 ## Fonctionnalité — Discussion privée

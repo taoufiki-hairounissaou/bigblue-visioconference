@@ -13,7 +13,7 @@ const TITLES = {
 };
 
 export default function PanelDrawer({
-  activePanel, onClose,
+  activePanel, onClose, roomId,
   participants, myId, isModerator, onModerate,
   messages, onSend,
   poll, onCreatePoll, onVotePoll, onClosePoll,
@@ -62,7 +62,7 @@ export default function PanelDrawer({
           />
         )}
         {activePanel === 'notes' && (
-          <NotesPanel note={note} canEdit={canEditShared} onChange={onUpdateNote} />
+          <NotesPanel roomId={roomId} note={note} canEdit={canEditShared} onChange={onUpdateNote} />
         )}
       </div>
     </div>
